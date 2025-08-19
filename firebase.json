@@ -13,7 +13,7 @@
       "port": 9099
     },
     "functions": {
-      "port": 5001
+      "source": "."
     },
     "firestore": {
       "port": 8080
@@ -22,7 +22,12 @@
       "port": 9000
     },
     "hosting": {
-      "port": 5000
+      "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
     },
     "pubsub": {
       "port": 8085
