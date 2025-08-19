@@ -25,5 +25,8 @@
     "firebase-functions-test": "^3.1.0",
     "globals": "^16.3.0"
   },
-  "private": true
+  "private": true,
+  
+  "type": "module"
+
 }
