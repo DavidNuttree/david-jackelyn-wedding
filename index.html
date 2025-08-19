@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Fall Wedding</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the fall theme */
+        :root {
+            --primary-color: #7b3f00; /* Darker burnt orange */
+            --secondary-color: #8B4513; /* SaddleBrown */
+            --accent-color: #a0522d; /* Sienna */
+            --text-color: #333;
+            --background-color: #f5f5dc; /* Beige */
+            --card-bg: #fff;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            background-image: url('https://placehold.co/1920x1080/D2B48C/5C4033?text=Fall+Leaves+Background');
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* Hide the navigation menu by default on mobile, sliding from the left */
+        #nav-menu {
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(-100%);
+        }
+
+        #nav-menu.active {
+            transform: translateX(0);
+        }
+
+        @media (min-width: 768px) {
+            #nav-menu {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 md:p-8">
+
+    <!-- Mobile Navigation Toggle Button -->
+    <button id="nav-toggle" class="md:hidden fixed top-4 left-4 z-50 p-3 bg-secondary-color text-white rounded-full shadow-lg transition-all hover:scale-105 active:scale-95">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+        </svg>
+    </button>
+
+    <!-- Collapsible Left-Side Navigation Menu -->
+    <nav id="nav-menu" class="fixed top-0 left-0 h-full w-64 bg-white bg-opacity-90 backdrop-blur-sm z-40 p-6 flex flex-col shadow-lg md:relative md:w-auto md:h-auto md:bg-transparent md:backdrop-blur-none md:shadow-none md:p-0 md:flex-row md:items-center">
+        <!-- Close button for mobile -->
+        <button id="nav-close" class="md:hidden absolute top-4 left-4 p-2 text-gray-600 hover:text-gray-900">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        <!-- Nav items -->
+        <ul class="flex flex-col md:flex-row md:space-x-8 mt-12 md:mt-0 space-y-4 md:space-y-0 text-xl font-medium">
+            <li><button class="nav-link w-full text-left p-2 rounded-lg transition-colors" data-section="album">Album</button></li>
+            <li><button class="nav-link w-full text-left p-2 rounded-lg transition-colors" data-section="upload">Upload Photos</button></li>
+            <li><button class="nav-link w-full text-left p-2 rounded-lg transition-colors" data-section="timeline">Timeline</button></li>
+            <li><button class="nav-link w-full text-left p-2 rounded-lg transition-colors" data-section="readings">Readings</button></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="w-full max-w-4xl bg-white bg-opacity-80 backdrop-blur-sm rounded-2xl shadow-xl p-8 md:p-12 mt-10 md:mt-0">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-accent-color font-serif mb-2">Our Wedding</h1>
+            <p class="text-xl md:text-2xl text-secondary-color">October 26, 2024</p>
+        </header>
+
+        <section id="content-container">
+            <!-- Content will be dynamically loaded here -->
+        </section>
+    </main>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL, listAll } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+        // Firebase global variables
+        let auth, storage;
+
+        // Ensure firebase config and auth token are available from the environment
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        /**
+         * Initializes Firebase and authenticates the user.
+         */
+        async function initializeFirebase() {
+            if (!firebaseConfig) {
+                console.error("Firebase config is not provided by the environment.");
+                return;
+            }
+
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            storage = getStorage(app);
+
+            // Listen for auth state changes to handle initial sign-in and persistence
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) {
+                    // Sign in with custom token if available, otherwise sign in anonymously
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                }
+            });
+        }
+
+        // Call the initialization function when the script loads
+        initializeFirebase();
+
+        // UI element references
+        const navToggleBtn = document.getElementById('nav-toggle');
+        const navCloseBtn = document.getElementById('nav-close');
+        const navMenu = document.getElementById('nav-menu');
+        const contentContainer = document.getElementById('content-container');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        // Function to toggle the navigation menu
+        function toggleNav() {
+            navMenu.classList.toggle('active');
+        }
+
+        // Function to clear active state from all links
+        function clearActiveLinks() {
+            navLinks.forEach(link => {
+                link.classList.remove('bg-gray-200');
+            });
+        }
+
+        // Add event listeners for navigation toggle
+        navToggleBtn.addEventListener('click', toggleNav);
+        navCloseBtn.addEventListener('click', toggleNav);
+
+        // Function to render a section's content based on its name
+        function renderSection(sectionName, linkElement) {
+            contentContainer.innerHTML = ''; // Clear previous content
+            clearActiveLinks(); // Clear active state from all links
+            if (linkElement) {
+                linkElement.classList.add('bg-gray-200'); // Set active state for the clicked link
+            }
+
+            switch (sectionName) {
+                case 'upload':
+                    showUploadForm();
+                    break;
+                case 'album':
+                    showAlbum();
+                    break;
+                case 'timeline':
+                    showTimeline();
+                    break;
+                case 'readings':
+                    showReadings();
+                    break;
+            }
+            if (window.innerWidth < 768) {
+                navMenu.classList.remove('active'); // Close menu on mobile after selection
+            }
+        }
+
+        // Add event listeners to navigation links
+        navLinks.forEach(link => {
+            link.addEventListener('click', (event) => {
+                const section = event.target.dataset.section;
+                renderSection(section, event.target);
+            });
+        });
+
+        /**
+         * Displays the photo upload form and handles the file upload to Firebase Storage.
+         */
+        function showUploadForm() {
+            contentContainer.innerHTML = `
+                <div class="space-y-6">
+                    <h2 class="text-3xl font-semibold text-center text-primary-color">Share Your Photos</h2>
+                    <p class="text-center text-lg text-gray-700">We would love to see your favorite moments from our special day! Please share your photos below.</p>
+                    <div class="p-6 bg-white rounded-xl shadow-inner space-y-4 border-2 border-dashed border-gray-300">
+                        <label for="photo-file" class="block text-center text-lg font-medium text-gray-700 cursor-pointer hover:text-primary-color transition-colors">
+                            Click to select photos
+                            <input type="file" id="photo-file" class="hidden" multiple accept="image/*">
+                        </label>
+                        <p id="file-message" class="text-center text-sm text-gray-500 italic">No files selected.</p>
+                        <div id="upload-preview" class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4"></div>
+                    </div>
+                    <button id="upload-btn" class="w-full py-3 px-6 bg-accent-color text-white text-lg font-bold rounded-full shadow-lg hover:bg-opacity-90 transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Upload Photos
+                    </button>
+                    <div id="upload-status" class="text-center mt-4"></div>
+                </div>
+            `;
+            const fileInput = document.getElementById('photo-file');
+            const uploadBtn = document.getElementById('upload-btn');
+            const fileMessage = document.getElementById('file-message');
+            const uploadStatus = document.getElementById('upload-status');
+            const uploadPreview = document.getElementById('upload-preview');
+
+            let selectedFiles = [];
+
+            // Event listener for file selection
+            fileInput.addEventListener('change', (event) => {
+                selectedFiles = Array.from(event.target.files);
+                if (selectedFiles.length > 0) {
+                    fileMessage.textContent = `${selectedFiles.length} file(s) selected.`;
+                    uploadBtn.disabled = false;
+                    uploadPreview.innerHTML = '';
+                    selectedFiles.forEach(file => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.classList.add('w-full', 'h-32', 'object-cover', 'rounded-lg', 'shadow');
+                            uploadPreview.appendChild(img);
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                } else {
+                    fileMessage.textContent = 'No files selected.';
+                    uploadBtn.disabled = true;
+                    uploadPreview.innerHTML = '';
+                }
+            });
+
+            // Event listener for the upload button
+            uploadBtn.addEventListener('click', async () => {
+                if (selectedFiles.length === 0) return;
+                
+                uploadBtn.disabled = true;
+                uploadStatus.innerHTML = `<p class="text-blue-500 font-semibold">Uploading photos...</p>`;
+
+                const uploadPromises = selectedFiles.map(file => {
+                    const uniqueFileName = `${Date.now()}_${file.name}`;
+                    const storageRef = ref(storage, `wedding-photos/${uniqueFileName}`);
+                    const uploadTask = uploadBytesResumable(storageRef, file);
+
+                    return new Promise((resolve, reject) => {
+                        uploadTask.on('state_changed',
+                            (snapshot) => {
+                                // Optional: Get upload progress
+                                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                console.log('Upload is ' + progress.toFixed(0) + '% done');
+                                // You could update a progress bar here
+                            },
+                            (error) => {
+                                console.error('Upload failed:', error);
+                                reject(error);
+                            },
+                            () => {
+                                // Upload completed successfully
+                                getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                                    console.log('File available at', downloadURL);
+                                    resolve(downloadURL);
+                                });
+                            }
+                        );
+                    });
+                });
+
+                try {
+                    await Promise.all(uploadPromises);
+                    uploadStatus.innerHTML = `<p class="text-green-600 font-bold">🎉 Thank you! Your photos have been successfully uploaded!</p>`;
+                    fileInput.value = ''; // Reset the file input
+                    selectedFiles = [];
+                    uploadBtn.disabled = true;
+                    fileMessage.textContent = 'No files selected.';
+                    uploadPreview.innerHTML = '';
+                } catch (error) {
+                    uploadStatus.innerHTML = `<p class="text-red-600 font-bold">❌ Upload failed. Please try again.</p>`;
+                    console.error('Batch upload error:', error);
+                    uploadBtn.disabled = false;
+                }
+            });
+        }
+
+        /**
+         * Displays the photo album by fetching images from Firebase Storage.
+         */
+        async function showAlbum() {
+            contentContainer.innerHTML = `
+                <div class="space-y-6">
+                    <h2 class="text-3xl font-semibold text-center text-primary-color">Wedding Photo Album</h2>
+                    <p class="text-center text-lg text-gray-700">A collection of our favorite moments. Check back for more photos soon!</p>
+                    <div id="album-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                        <!-- Loading indicator -->
+                        <div id="album-loading" class="col-span-full text-center py-10">
+                            <div class="animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-accent-color mx-auto mb-4"></div>
+                            <p class="text-lg text-gray-600">Loading photos from the album...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            fetchAlbumImages();
+        }
+
+        /**
+         * Fetches images from the 'wedding-photos' folder in Firebase Storage and displays them.
+         */
+        async function fetchAlbumImages() {
+            if (!storage) {
+                console.error("Firebase Storage is not initialized.");
+                document.getElementById('album-loading').innerHTML = `<p class="text-lg text-red-600">Error: Firebase Storage not initialized. Please ensure Firebase is set up correctly.</p>`;
+                return;
+            }
+
+            const albumContainer = document.getElementById('album-container');
+            const listRef = ref(storage, 'wedding-photos');
+            
+            try {
+                // Fetch all items (files) from the 'wedding-photos' folder
+                const res = await listAll(listRef);
+                const imageUrls = await Promise.all(res.items.map(itemRef => getDownloadURL(itemRef)));
+
+                // Clear the loading indicator
+                const loadingIndicator = document.getElementById('album-loading');
+                if (loadingIndicator) {
+                    loadingIndicator.remove();
+                }
+
+                if (imageUrls.length === 0) {
+                     albumContainer.innerHTML = `<p class="col-span-full text-center text-gray-500 italic">No photos have been uploaded yet.</p>`;
+                } else {
+                    imageUrls.forEach(url => {
+                        const imgDiv = document.createElement('div');
+                        imgDiv.classList.add('relative', 'group', 'rounded-xl', 'overflow-hidden', 'shadow-md', 'hover:shadow-xl', 'transition-all', 'duration-300', 'transform', 'hover:scale-105');
+                        imgDiv.innerHTML = `<img src="${url}" class="w-full h-48 object-cover transition-transform duration-300 transform group-hover:scale-110" alt="Wedding photo from album">`;
+                        albumContainer.appendChild(imgDiv);
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching album images:', error);
+                const loadingIndicator = document.getElementById('album-loading');
+                if (loadingIndicator) {
+                    loadingIndicator.innerHTML = `<p class="text-lg text-red-600">Failed to load images. Please check your Firebase Storage settings.</p>`;
+                }
+            }
+        }
+
+
+        // Displays the wedding timeline
+        function showTimeline() {
+            contentContainer.innerHTML = `
+                <div class="space-y-6">
+                    <h2 class="text-3xl font-semibold text-center text-primary-color">Wedding Day Timeline</h2>
+                    <p class="text-center text-lg text-gray-700">A guide to our special day. We can't wait to celebrate with you!</p>
+                    <div class="bg-white p-6 rounded-xl shadow-inner space-y-4">
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-accent-color text-white flex items-center justify-center font-bold">1</div>
+                            <div>
+                                <h3 class="font-bold text-lg text-secondary-color">4:00 PM - Ceremony</h3>
+                                <p class="text-gray-700">The ceremony will be held in the outdoor garden, surrounded by beautiful fall foliage.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-accent-color text-white flex items-center justify-center font-bold">2</div>
+                            <div>
+                                <h3 class="font-bold text-lg text-secondary-color">4:30 PM - Cocktail Hour</h3>
+                                <p class="text-gray-700">Enjoy some drinks and light bites while the newlyweds take photos.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-accent-color text-white flex items-center justify-center font-bold">3</div>
+                            <div>
+                                <h3 class="font-bold text-lg text-secondary-color">6:00 PM - Dinner & Reception</h3>
+                                <p class="text-gray-700">Dinner, dancing, and toasts to celebrate!</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-accent-color text-white flex items-center justify-center font-bold">4</div>
+                            <div>
+                                <h3 class="font-bold text-lg text-secondary-color">10:00 PM - Send-Off</h3>
+                                <p class="text-gray-700">The happy couple will make their grand exit.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Displays the wedding readings
+        function showReadings() {
+            contentContainer.innerHTML = `
+                <div class="space-y-6">
+                    <h2 class="text-3xl font-semibold text-center text-primary-color">Wedding Readings</h2>
+                    <p class="text-center text-lg text-gray-700">The beautiful words that will be shared during our ceremony.</p>
+                    <div class="bg-white p-6 rounded-xl shadow-inner space-y-6">
+                        <div class="space-y-2">
+                            <h3 class="font-bold text-lg text-secondary-color">Reading 1: "The Art of Marriage" by Wilferd A. Peterson</h3>
+                            <blockquote class="italic text-gray-700 border-l-4 border-accent-color pl-4">
+                                A good marriage must be created. In the art of marriage, the little things are the big things. It is never being too old to hold hands. It is remembering to say "I love you" at least once a day. It is never going to sleep angry. It is having a mutual sense of values and common objectives. It is standing together facing the world.
+                            </blockquote>
+                        </div>
+                        <div class="space-y-2">
+                            <h3 class="font-bold text-lg text-secondary-color">Reading 2: 1 Corinthians 13:4-7</h3>
+                            <blockquote class="italic text-gray-700 border-l-4 border-accent-color pl-4">
+                                Love is patient, love is kind. It does not envy, it does not boast, it is not proud. It does not dishonor others, it is not self-seeking, it is not easily angered, it keeps no record of wrongs. Love does not delight in evil but rejoices with the truth. It always protects, always trusts, always hopes, always perseveres.
+                            </blockquote>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Initialize the app on window load
+        window.onload = function() {
+            // Check if the screen is wider than 768px (md breakpoint)
+            // and hide the toggle button if it is.
+            if (window.innerWidth >= 768) {
+                navToggleBtn.style.display = 'none';
+            }
+            // Initially render the album section
+            renderSection('album', document.querySelector('[data-section="album"]'));
+        };
+    </script>
+</body>
+</html>
