@@ -4,8 +4,7 @@ export default [
     rules: {
       // Example: require semicolons
       semi: ["error", "always"],
-      // Example: use single quotes
-      quotes: ["error", "single"],
+      // quotes: ["error", "single"], // Remove or comment out this line
     },
   },
 ];
